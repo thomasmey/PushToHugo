@@ -12,6 +12,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectInserter;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.TreeFormatter;
+import org.eclipse.jgit.revwalk.RevBlob;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
@@ -59,22 +60,33 @@ public class GitUtil {
 //				.setRefSpecs(new RefSpec("refs/heads/master")).call();
 
             DfsObjDatabase odb = repo.getObjectDatabase();
-            ObjectInserter ins = odb.newInserter();
 
-            // add file
-            byte[] postData = createBlogPost(title, link, extras, currentDate).getBytes("UTF-8");
-            ObjectId blobId = ins.insert(Constants.OBJ_BLOB, postData);
-            ins.flush();
-
+            ObjectId blobId;
+            {
+                ObjectInserter ins = odb.newInserter();
+                // add file
+                byte[] postData = createBlogPost(title, link, extras, currentDate).getBytes("UTF-8");
+                blobId = ins.insert(Constants.OBJ_BLOB, postData);
+                ins.flush();
+                ins.close();
+            }
             RevWalk walker = new RevWalk(repo);
+            RevBlob rbid = walker.lookupBlob(blobId);
 //			walker.parseCommit()
+            walker.close();
 
             // add tree
             TreeFormatter tf = new TreeFormatter();
             String filename = getBlogPostFileName(currentDate, title, getBlogPostFileExtenstion());
-            tf.append(filename, walker.lookupBlob(blobId));
-            ObjectId treeId = tf.insertTo(ins);
-            walker.close();
+            tf.append(filename, rbid);
+
+            ObjectId treeId;
+            {
+                ObjectInserter ins = odb.newInserter();
+                treeId = tf.insertTo(ins);
+                ins.flush();
+                ins.close();
+            }
 
             // commit
             CommitBuilder cb = new CommitBuilder();
@@ -87,10 +99,14 @@ public class GitUtil {
 
             cb.setMessage(commitMessage);
             byte[] commitData = cb.build();
-            ObjectId commitId = ins.insert(Constants.OBJ_COMMIT, commitData);
-            ins.flush();
-            ins.close();
 
+            ObjectId commitId;
+            {
+                ObjectInserter ins = odb.newInserter();
+                commitId = ins.insert(Constants.OBJ_COMMIT, commitData);
+                ins.flush();
+                ins.close();
+            }
 			/* create a new branch with one file for now,
 			 * with this dirty trick we at least conserve the data in the remote repository
 			 */
@@ -174,5 +190,4 @@ public class GitUtil {
     private String getRemoteRepoCredPassword() {
         return "password";
     }
-
 }
