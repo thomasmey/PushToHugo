@@ -29,24 +29,24 @@ import java.util.Map;
  */
 
 public class GitUtil {
-    public void createRepoAndAddPost(String title, String link, Map<String, String> extras) {
+	public void createRepoAndAddPost(String title, String link, Map<String, String> extras) {
 
-        Date currentDate = new Date();
-        CredentialsProvider credProv = new UsernamePasswordCredentialsProvider(getRemoteRepoCredUser(), getRemoteRepoCredPassword());
+		Date currentDate = new Date();
+		CredentialsProvider credProv = new UsernamePasswordCredentialsProvider(getRemoteRepoCredUser(), getRemoteRepoCredPassword());
 
-        try {
-            DfsRepositoryDescription repoDesc = new DfsRepositoryDescription("pushToHugo");
-            InMemoryRepository repo = new InMemoryRepository(repoDesc);
-            repo.create();
+		try {
+			DfsRepositoryDescription repoDesc = new DfsRepositoryDescription("pushToHugo");
+			InMemoryRepository repo = new InMemoryRepository(repoDesc);
+			repo.create();
 
-            Git git = new Git(repo);
-            RemoteAddCommand rac = git.remoteAdd();
-            rac.setName("origin");
-            rac.setUri(getRemoteUrl());
-            rac.call();
+			Git git = new Git(repo);
+			RemoteAddCommand rac = git.remoteAdd();
+			rac.setName("origin");
+			rac.setUri(getRemoteUrl());
+			rac.call();
 
-            Map<String, org.eclipse.jgit.lib.Ref> remoteRefs = git.lsRemote().setCredentialsProvider(credProv).callAsMap();
-            org.eclipse.jgit.lib.Ref remoteHead = remoteRefs.get(Constants.HEAD);
+			Map<String, org.eclipse.jgit.lib.Ref> remoteRefs = git.lsRemote().setCredentialsProvider(credProv).callAsMap();
+			org.eclipse.jgit.lib.Ref remoteHead = remoteRefs.get(Constants.HEAD);
 
 			/* sadly there is no way to fetch single object from remote,
 			 * we actually need only a few object:
@@ -55,139 +55,139 @@ public class GitUtil {
 			 * then we could add a new blob to tree object /content/post
 			 * and create a new tree object and commit.
 			 */
-//			git.fetch()
-//				.setCredentialsProvider(credProv)
-//				.setRefSpecs(new RefSpec("refs/heads/master")).call();
+			//			git.fetch()
+			//				.setCredentialsProvider(credProv)
+			//				.setRefSpecs(new RefSpec("refs/heads/master")).call();
 
-            DfsObjDatabase odb = repo.getObjectDatabase();
+			DfsObjDatabase odb = repo.getObjectDatabase();
 
-            ObjectId blobId;
-            {
-                ObjectInserter ins = odb.newInserter();
-                // add file
-                byte[] postData = createBlogPost(title, link, extras, currentDate).getBytes("UTF-8");
-                blobId = ins.insert(Constants.OBJ_BLOB, postData);
-                ins.flush();
-                ins.close();
-            }
-            RevWalk walker = new RevWalk(repo);
-            RevBlob rbid = walker.lookupBlob(blobId);
-//			walker.parseCommit()
-            walker.close();
+			ObjectId blobId;
+			{
+				ObjectInserter ins = odb.newInserter();
+				// add file
+				byte[] postData = createBlogPost(title, link, extras, currentDate).getBytes("UTF-8");
+				blobId = ins.insert(Constants.OBJ_BLOB, postData);
+				ins.flush();
+				ins.close();
+			}
+			RevWalk walker = new RevWalk(repo);
+			RevBlob rbid = walker.lookupBlob(blobId);
+			//			walker.parseCommit()
+			walker.close();
 
-            // add tree
-            TreeFormatter tf = new TreeFormatter();
-            String filename = getBlogPostFileName(currentDate, title, getBlogPostFileExtenstion());
-            tf.append(filename, rbid);
+			// add tree
+			TreeFormatter tf = new TreeFormatter();
+			String filename = getBlogPostFileName(currentDate, title, getBlogPostFileExtenstion());
+			tf.append(filename, rbid);
 
-            ObjectId treeId;
-            {
-                ObjectInserter ins = odb.newInserter();
-                treeId = tf.insertTo(ins);
-                ins.flush();
-                ins.close();
-            }
+			ObjectId treeId;
+			{
+				ObjectInserter ins = odb.newInserter();
+				treeId = tf.insertTo(ins);
+				ins.flush();
+				ins.close();
+			}
 
-            // commit
-            CommitBuilder cb = new CommitBuilder();
-            cb.setTreeId(treeId);
-            PersonIdent personIdent = new PersonIdent(getCommitAuthor(), getCommitEmail());
-            cb.setAuthor(personIdent);
-            cb.setCommitter(personIdent);
-            String commitMessage =
-                    "New blog post from App\n";
+			// commit
+			CommitBuilder cb = new CommitBuilder();
+			cb.setTreeId(treeId);
+			PersonIdent personIdent = new PersonIdent(getCommitAuthor(), getCommitEmail());
+			cb.setAuthor(personIdent);
+			cb.setCommitter(personIdent);
+			String commitMessage =
+					"New blog post from App\n";
 
-            cb.setMessage(commitMessage);
-            byte[] commitData = cb.build();
+			cb.setMessage(commitMessage);
+			byte[] commitData = cb.build();
 
-            ObjectId commitId;
-            {
-                ObjectInserter ins = odb.newInserter();
-                commitId = ins.insert(Constants.OBJ_COMMIT, commitData);
-                ins.flush();
-                ins.close();
-            }
+			ObjectId commitId;
+			{
+				ObjectInserter ins = odb.newInserter();
+				commitId = ins.insert(Constants.OBJ_COMMIT, commitData);
+				ins.flush();
+				ins.close();
+			}
 			/* create a new branch with one file for now,
 			 * with this dirty trick we at least conserve the data in the remote repository
 			 */
-            String targetRef = "refs/heads/posts/" + filename;
-            git.push()
-                    .setCredentialsProvider(credProv)
-                    .add("" + commitId.name() + ":" + targetRef).call();
+			String targetRef = "refs/heads/posts/" + filename;
+			git.push()
+			.setCredentialsProvider(credProv)
+			.add("" + commitId.name() + ":" + targetRef).call();
 
-            git.close();
-            repo.close();
-        } catch (IOException | GitAPIException | URISyntaxException e) {
-            e.printStackTrace();
-        } finally {}
-    }
+			git.close();
+			repo.close();
+		} catch (IOException | GitAPIException | URISyntaxException e) {
+			e.printStackTrace();
+		} finally {}
+	}
 
-    /**
-     * create a blog post from a template file
-     * @param title
-     * @param extras
-     * @param url
-     * @return
-     */
-    private String createBlogPost(String title, String url, Map<String,String> extras, Date date) {
+	/**
+	 * create a blog post from a template file
+	 * @param title
+	 * @param extras
+	 * @param url
+	 * @return
+	 */
+	private String createBlogPost(String title, String url, Map<String,String> extras, Date date) {
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-        // create meta data
-        StringBuffer sb = new StringBuffer();
-        sb
-                .append("---\n")
-                .append("title: ").append(title).append("\n")
-                .append("type: post\n")
-                .append("date: ").append(sdf.format(date)).append("\n");
-        for(Map.Entry<String, String> e : extras.entrySet()) {
-            sb.append(e.getKey()).append(": ").append(e.getValue()).append("\n");
-        }
-        sb.append("\n")
-                .append("---\n")
-                .append("<" + url + ">");
+		// create meta data
+		StringBuffer sb = new StringBuffer();
+		sb
+		.append("---\n")
+		.append("title: ").append(title).append("\n")
+		.append("type: post\n")
+		.append("date: ").append(sdf.format(date)).append("\n");
+		for(Map.Entry<String, String> e : extras.entrySet()) {
+			sb.append(e.getKey()).append(": ").append(e.getValue()).append("\n");
+		}
+		sb.append("\n")
+		.append("---\n")
+		.append("<" + url + ">");
 
-        return sb.toString();
-    }
+		return sb.toString();
+	}
 
-    private String getBlogPostFileExtenstion() {
-        return ".md";
-    }
+	private String getBlogPostFileExtenstion() {
+		return ".md";
+	}
 
-    private String getBlogPostFileName(Date date, String title, String fileExtension) {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        StringBuilder sb = new StringBuilder();
-        for(int i=0, n=title.length(); i < n; i++) {
-            char c = title.charAt(i);
-            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-                sb.append(c);
-            } else if(c >= 'A' && c <= 'Z') {
-                sb.append(Character.toLowerCase(c));
-            } else if(c == ' ') {
-                sb.append('-');
-            }
-        }
-        return "" + sdf.format(date) + '-' + sb.toString() + fileExtension;
-    }
+	private String getBlogPostFileName(Date date, String title, String fileExtension) {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		StringBuilder sb = new StringBuilder();
+		for(int i=0, n=title.length(); i < n; i++) {
+			char c = title.charAt(i);
+			if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+				sb.append(c);
+			} else if(c >= 'A' && c <= 'Z') {
+				sb.append(Character.toLowerCase(c));
+			} else if(c == ' ') {
+				sb.append('-');
+			}
+		}
+		return "" + sdf.format(date) + '-' + sb.toString() + fileExtension;
+	}
 
-    /*** configuration - this should be put in some config activity or something ***/
-    private String getCommitEmail() {
-        return "youremail@example.com";
-    }
+	/*** configuration - this should be put in some config activity or something ***/
+	private String getCommitEmail() {
+		return "youremail@example.com";
+	}
 
-    private String getCommitAuthor() {
-        return "Your Name";
-    }
+	private String getCommitAuthor() {
+		return "Your Name";
+	}
 
-    private URIish getRemoteUrl() throws URISyntaxException {
-        return new URIish("http://git.example.com/yourepo");
-    }
+	private URIish getRemoteUrl() throws URISyntaxException {
+		return new URIish("http://git.example.com/yourepo");
+	}
 
-    private String getRemoteRepoCredUser() {
-        return "username";
-    }
+	private String getRemoteRepoCredUser() {
+		return "username";
+	}
 
-    private String getRemoteRepoCredPassword() {
-        return "password";
-    }
+	private String getRemoteRepoCredPassword() {
+		return "password";
+	}
 }

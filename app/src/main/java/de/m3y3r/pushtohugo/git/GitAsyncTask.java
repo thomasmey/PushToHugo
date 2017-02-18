@@ -9,9 +9,9 @@ import java.util.HashMap;
  */
 
 public class GitAsyncTask extends AsyncTask<String, Void, Void> {
-    @Override
-    protected Void doInBackground(String[] params) {
-        new GitUtil().createRepoAndAddPost(params[0], params[1], new HashMap<String, String>());
-        return null;
-    }
+	@Override
+	protected Void doInBackground(String[] params) {
+		new GitUtil().createRepoAndAddPost(params[0], params[1], new HashMap<String, String>());
+		return null;
+	}
 }
