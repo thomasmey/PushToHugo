@@ -3,17 +3,14 @@ package de.m3y3r.pushtohugo;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 
-import java.util.HashMap;
+import org.eclipse.jgit.util.HttpSupport;
 
 import de.m3y3r.pushtohugo.git.GitAsyncTask;
-import de.m3y3r.pushtohugo.git.GitUtil;
 
 /**
  * Created by thomas on 12.02.2017.
  */
-
 public class ShareActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -25,10 +22,11 @@ public class ShareActivity extends Activity {
 		String type = intent.getType();
 
 		if (Intent.ACTION_SEND.equals(action)) {
-			if ("text/plain".equals(type)) {
+			if (HttpSupport.TEXT_PLAIN.equals(type)) {
 				String title = intent.getStringExtra(Intent.EXTRA_SUBJECT);
 				String url = intent.getStringExtra(Intent.EXTRA_TEXT);
-				new GitAsyncTask().execute(title, url);
+				GitAsyncTask t = new GitAsyncTask(getApplicationContext());
+				t.execute(title, url);
 			}
 		}
 		finish();

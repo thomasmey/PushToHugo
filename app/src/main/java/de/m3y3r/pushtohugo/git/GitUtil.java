@@ -1,5 +1,9 @@
 package de.m3y3r.pushtohugo.git;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -7,7 +11,6 @@ import org.eclipse.jgit.internal.storage.dfs.DfsObjDatabase;
 import org.eclipse.jgit.internal.storage.dfs.DfsRepositoryDescription;
 import org.eclipse.jgit.internal.storage.dfs.InMemoryRepository;
 import org.eclipse.jgit.lib.CommitBuilder;
-import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectInserter;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -27,8 +30,14 @@ import java.util.Map;
 /**
  * Created by thomas on 12.02.2017.
  */
-
 public class GitUtil {
+
+	private final Context context;
+
+	public GitUtil(Context ctx) {
+		this.context = ctx;
+	}
+
 	public void createRepoAndAddPost(String title, String link, Map<String, String> extras) {
 
 		Date currentDate = new Date();
@@ -46,7 +55,7 @@ public class GitUtil {
 			rac.call();
 
 			Map<String, org.eclipse.jgit.lib.Ref> remoteRefs = git.lsRemote().setCredentialsProvider(credProv).callAsMap();
-			org.eclipse.jgit.lib.Ref remoteHead = remoteRefs.get(Constants.HEAD);
+			org.eclipse.jgit.lib.Ref remoteHead = remoteRefs.get(org.eclipse.jgit.lib.Constants.HEAD);
 
 			/* sadly there is no way to fetch single object from remote,
 			 * we actually need only a few object:
@@ -55,9 +64,9 @@ public class GitUtil {
 			 * then we could add a new blob to tree object /content/post
 			 * and create a new tree object and commit.
 			 */
-			//			git.fetch()
-			//				.setCredentialsProvider(credProv)
-			//				.setRefSpecs(new RefSpec("refs/heads/master")).call();
+//			git.fetch()
+//				.setCredentialsProvider(credProv)
+//				.setRefSpecs(new RefSpec("refs/heads/master")).call();
 
 			DfsObjDatabase odb = repo.getObjectDatabase();
 
@@ -66,13 +75,13 @@ public class GitUtil {
 				ObjectInserter ins = odb.newInserter();
 				// add file
 				byte[] postData = createBlogPost(title, link, extras, currentDate).getBytes("UTF-8");
-				blobId = ins.insert(Constants.OBJ_BLOB, postData);
+				blobId = ins.insert(org.eclipse.jgit.lib.Constants.OBJ_BLOB, postData);
 				ins.flush();
 				ins.close();
 			}
 			RevWalk walker = new RevWalk(repo);
 			RevBlob rbid = walker.lookupBlob(blobId);
-			//			walker.parseCommit()
+//			walker.parseCommit()
 			walker.close();
 
 			// add tree
@@ -94,8 +103,7 @@ public class GitUtil {
 			PersonIdent personIdent = new PersonIdent(getCommitAuthor(), getCommitEmail());
 			cb.setAuthor(personIdent);
 			cb.setCommitter(personIdent);
-			String commitMessage =
-					"New blog post from App\n";
+			String commitMessage = "New blog post from App\n";
 
 			cb.setMessage(commitMessage);
 			byte[] commitData = cb.build();
@@ -103,7 +111,7 @@ public class GitUtil {
 			ObjectId commitId;
 			{
 				ObjectInserter ins = odb.newInserter();
-				commitId = ins.insert(Constants.OBJ_COMMIT, commitData);
+				commitId = ins.insert(org.eclipse.jgit.lib.Constants.OBJ_COMMIT, commitData);
 				ins.flush();
 				ins.close();
 			}
@@ -112,13 +120,13 @@ public class GitUtil {
 			 */
 			String targetRef = "refs/heads/posts/" + filename;
 			git.push()
-			.setCredentialsProvider(credProv)
-			.add("" + commitId.name() + ":" + targetRef).call();
+				.setCredentialsProvider(credProv)
+				.add("" + commitId.name() + ":" + targetRef).call();
 
 			git.close();
 			repo.close();
 		} catch (IOException | GitAPIException | URISyntaxException e) {
-			e.printStackTrace();
+			Log.e(GitUtil.class.getName(), "Git push failed!", e);
 		} finally {}
 	}
 
@@ -170,24 +178,28 @@ public class GitUtil {
 		return "" + sdf.format(date) + '-' + sb.toString() + fileExtension;
 	}
 
-	/*** configuration - this should be put in some config activity or something ***/
 	private String getCommitEmail() {
-		return "youremail@example.com";
+		SharedPreferences sp = context.getSharedPreferences(Constants.GIT_PREFS, Context.MODE_PRIVATE);
+		return sp.getString(Constants.GP_COMMIT_EMAIL, null);
 	}
 
 	private String getCommitAuthor() {
-		return "Your Name";
+		SharedPreferences sp = context.getSharedPreferences(Constants.GIT_PREFS, Context.MODE_PRIVATE);
+		return sp.getString(Constants.GP_COMMIT_AUTHOR, null);
 	}
 
 	private URIish getRemoteUrl() throws URISyntaxException {
-		return new URIish("http://git.example.com/yourepo");
+		SharedPreferences sp = context.getSharedPreferences(Constants.GIT_PREFS, Context.MODE_PRIVATE);
+		return new URIish(sp.getString(Constants.GP_REPO_URL, null));
 	}
 
 	private String getRemoteRepoCredUser() {
-		return "username";
+		SharedPreferences sp = context.getSharedPreferences(Constants.GIT_PREFS, Context.MODE_PRIVATE);
+		return sp.getString(Constants.GP_REPO_AUTH_USERNAME, null);
 	}
 
 	private String getRemoteRepoCredPassword() {
-		return "password";
+		SharedPreferences sp = context.getSharedPreferences(Constants.GIT_PREFS, Context.MODE_PRIVATE);
+		return sp.getString(Constants.GP_REPO_AUTH_PASSWORD, null);
 	}
 }
