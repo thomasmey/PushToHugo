@@ -6,9 +6,9 @@ package de.m3y3r.pushtohugo.git;
 public class Constants {
 	public static final String GIT_PREFS = "GitPrefs";
 
-	public static final String GP_COMMIT_EMAIL = "git.commit.email";
-	public static final String GP_COMMIT_AUTHOR = "git.commit.author";
-	public static final String GP_REPO_URL = "git.repo.url";
-	public static final String GP_REPO_AUTH_USERNAME = "git.repo.auth.username";
-	public static final String GP_REPO_AUTH_PASSWORD = "git.repo.auth.password";
+	public static final String GP_COMMIT_EMAIL = "pref_key_git_comitter_email";
+	public static final String GP_COMMIT_AUTHOR = "pref_key_git_comitter_name";
+	public static final String GP_REPO_URL = "pref_key_git_url";
+	public static final String GP_REPO_AUTH_USERNAME = "pref_key_git_auth_username";
+	public static final String GP_REPO_AUTH_PASSWORD = "pref_key_git_auth_password";
 }
