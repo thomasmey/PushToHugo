@@ -2,7 +2,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "25.0.2"
     defaultConfig {
         applicationId "de.m3y3r.pushtohugo"
         minSdkVersion 15
@@ -20,6 +19,7 @@ android {
     }
     packagingOptions {
         exclude 'plugin.properties'
+        exclude 'META-INF/DEPENDENCIES'
     }
 }
 
@@ -30,8 +30,9 @@ dependencies {
     })
     compile 'org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r'
     compile 'org.slf4j:slf4j-android:1.7.22'
-    compile 'com.android.support:appcompat-v7:25.1.0'
-    compile 'com.android.support:support-v4:25.1.0'
-    compile 'com.android.support:support-vector-drawable:25.1.0'
+    compile 'com.android.support:appcompat-v7:25.4.0'
+    compile 'com.android.support:support-v4:25.4.0'
+    compile 'com.android.support:support-vector-drawable:25.4.0'
     testCompile 'junit:junit:4.12'
 }
+
